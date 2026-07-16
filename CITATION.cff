@@ -1,0 +1,38 @@
+cff-version: 1.2.0
+message: "If you use RStone in your research, please cite it as below."
+title: "RStone: a wizard-style data-entry app for lithic analysis"
+abstract: >-
+  RStone is an R/Shiny application for conditional, one-question-at-a-time
+  data entry in lithic analysis. It reads a user-configurable CFG schema
+  (based on the E5 format by S. McPherron), auto-skips fields whose
+  conditions are not met, validates entries (ranges, patterns, menus),
+  stores data as plain CSV plus a parallel JSON, and includes reporting
+  tools (Build-Your-Own plots with statistical annotations, PCA,
+  correspondence analysis) with reproducible R-script export.
+type: software
+authors:
+  - family-names: "Falcucci"
+    given-names: "Armando"
+    # orcid: "https://orcid.org/0000-0000-0000-0000"   # <- add your ORCID
+    # affiliation: "Your institution"                    # <- add your affiliation
+license: MIT
+repository-code: "https://github.com/YOUR-USERNAME/RStone"   # <- update after publishing
+version: "6.1.0"
+date-released: "2026-07-16"                                   # <- update to release date
+keywords:
+  - lithic analysis
+  - archaeology
+  - data entry
+  - R
+  - Shiny
+references:
+  - type: software
+    title: "E5"
+    authors:
+      - family-names: "McPherron"
+        given-names: "Shannon P."
+    repository-code: "https://github.com/surf3s/E5"
+    notes: >-
+      RStone reuses the CFG configuration-file format and the conditional
+      data-entry concept from E5. RStone is an independent re-implementation
+      in R/Shiny and contains no E5 source code.

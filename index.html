@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RStone — Guidelines</title>
+<style>
+:root {
+  --brand: #3c8dbc;
+  --brand-dark: #367fa9;
+  --ink: #1a2230;
+  --muted: #5a6a78;
+  --bg: #f6f9fc;
+  --card: #ffffff;
+  --line: #e1e8ef;
+  --code-bg: #f0f4f8;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  color: var(--ink);
+  background: var(--bg);
+  line-height: 1.65;
+}
+header {
+  background: linear-gradient(135deg, var(--brand), var(--brand-dark));
+  color: white;
+  padding: 60px 24px 70px;
+  text-align: center;
+}
+header h1 { font-size: 2.6rem; margin: 0 0 10px; font-weight: 700; }
+header p  { font-size: 1.15rem; opacity: 0.92; margin: 0; max-width: 700px; margin: 0 auto; }
+nav {
+  background: white;
+  border-bottom: 1px solid var(--line);
+  position: sticky; top: 0; z-index: 10;
+}
+nav ul {
+  display: flex; flex-wrap: wrap; gap: 4px;
+  list-style: none; margin: 0; padding: 12px 24px;
+  max-width: 1100px; margin: 0 auto;
+}
+nav a {
+  color: var(--ink); text-decoration: none;
+  padding: 6px 12px; border-radius: 6px;
+  font-size: 0.92rem; font-weight: 500;
+}
+nav a:hover { background: var(--bg); color: var(--brand); }
+main { max-width: 1100px; margin: 0 auto; padding: 40px 24px 80px; }
+section {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 30px 36px;
+  margin-bottom: 28px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.03);
+}
+h2 {
+  color: var(--brand-dark);
+  font-size: 1.6rem;
+  margin: 0 0 16px;
+  padding-bottom: 10px;
+  border-bottom: 2px solid var(--line);
+}
+h3 { color: var(--ink); margin: 24px 0 10px; font-size: 1.15rem; }
+p { margin: 0 0 12px; }
+ul, ol { padding-left: 24px; }
+li { margin-bottom: 6px; }
+code {
+  background: var(--code-bg);
+  color: var(--brand-dark);
+  padding: 2px 7px;
+  border-radius: 4px;
+  font-family: "SF Mono", Menlo, Consolas, monospace;
+  font-size: 0.9em;
+}
+pre {
+  background: var(--code-bg);
+  padding: 16px 20px;
+  border-radius: 8px;
+  overflow-x: auto;
+  border-left: 4px solid var(--brand);
+}
+pre code {
+  background: none; padding: 0; color: var(--ink);
+  font-size: 0.88rem; line-height: 1.5;
+}
+.feature-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 16px;
+  margin-top: 18px;
+}
+.feature {
+  background: var(--bg);
+  padding: 16px 18px;
+  border-radius: 8px;
+  border-left: 3px solid var(--brand);
+}
+.feature h4 { margin: 0 0 6px; color: var(--brand-dark); font-size: 1rem; }
+.feature p  { margin: 0; font-size: 0.92rem; color: var(--muted); }
+.callout {
+  background: #fff8e1;
+  border-left: 4px solid #f57f17;
+  padding: 14px 18px;
+  border-radius: 6px;
+  margin: 18px 0;
+}
+.callout strong { color: #b06700; }
+.shortcut {
+  display: inline-block;
+  background: var(--ink);
+  color: white;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-family: "SF Mono", Menlo, Consolas, monospace;
+  font-size: 0.85em;
+  margin: 0 2px;
+}
+table {
+  width: 100%; border-collapse: collapse;
+  margin: 12px 0; font-size: 0.94rem;
+}
+th, td {
+  text-align: left;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--line);
+}
+th { background: var(--bg); font-weight: 600; color: var(--ink); }
+tr:hover td { background: var(--bg); }
+footer {
+  text-align: center;
+  padding: 30px 24px;
+  color: var(--muted);
+  font-size: 0.9rem;
+  border-top: 1px solid var(--line);
+}
+footer a { color: var(--brand); }
+.tag {
+  display: inline-block;
+  background: var(--brand);
+  color: white;
+  font-size: 0.72rem;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 10px;
+  margin-left: 6px;
+  vertical-align: middle;
+}
+@media (max-width: 700px) {
+  header { padding: 40px 16px 50px; }
+  header h1 { font-size: 1.9rem; }
+  section { padding: 22px 20px; }
+  nav ul { gap: 2px; padding: 8px 12px; }
+}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>RStone</h1>
+  <p>A wizard-style data entry app for lithic analysis. One question at a time, conditional fields, your data in plain CSV.</p>
+</header>
+
+<nav>
+  <ul>
+    <li><a href="#install">Install</a></li>
+    <li><a href="#first-run">First run</a></li>
+    <li><a href="#data-entry">Data entry</a></li>
+    <li><a href="#schema">Schema</a></li>
+    <li><a href="#reports">Reports</a></li>
+    <li><a href="#data">Data &amp; backups</a></li>
+    <li><a href="#git">Sync &amp; share</a></li>
+    <li><a href="#shortcuts">Shortcuts</a></li>
+    <li><a href="#faq">FAQ</a></li>
+  </ul>
+</nav>
+
+<main>
+
+<section id="install">
+  <h2>1. Install</h2>
+  <p>You need <strong>R</strong> (any recent version) and optionally <strong>RStudio</strong>. Git is recommended for sharing and versioning your data.</p>
+  <ol>
+    <li>Install R: <a href="https://posit.co/download/rstudio-desktop/">posit.co/download</a></li>
+    <li>Install Git (optional but recommended): <a href="https://git-scm.com/downloads">git-scm.com</a></li>
+    <li>Clone the repo and install R dependencies:</li>
+  </ol>
+  <pre><code>git clone https://github.com/YOU/RStone.git MyProject
+cd MyProject
+# in R/RStudio from this folder:
+source("install.R")
+shiny::runApp()</code></pre>
+  <div class="callout">
+    <strong>Tip:</strong> if you want to use RStone for a different project later, just clone again into a separate folder. Each clone is fully independent — its own data, schema, and config.
+  </div>
+</section>
+
+<section id="first-run">
+  <h2>2. First run</h2>
+  <p>The first time you launch the app, a <strong>welcome dialog</strong> appears. Fill in:</p>
+  <ul>
+    <li><strong>Site / project name</strong> — anything you like; shown in the header bar.</li>
+    <li><strong>Analyst name</strong> — recorded in the audit log so you can track who made which changes.</li>
+    <li><strong>Data file</strong> — the CSV where your records will live (default: <code>data/data.csv</code>).</li>
+    <li><strong>Schema</strong> — the CFG file defining which questions to ask. <code>default.cfg</code> is a good starting point. <code>[example] boomplaas.cfg</code> shows a richer worked example with the Flake/Core split.</li>
+  </ul>
+  <p>You can change any of these later in <strong>Settings</strong>, or hit <strong>Run Welcome Setup</strong> there to start fresh.</p>
+</section>
+
+<section id="data-entry">
+  <h2>3. Daily use — data entry</h2>
+  <p>The wizard asks <strong>one question at a time</strong>. Move through the fields by:</p>
+  <ul>
+    <li>Pressing <span class="shortcut">Enter</span> on text/numeric fields (or click <strong>Next →</strong>).</li>
+    <li>Clicking an option button — the wizard advances immediately.</li>
+    <li>Picking from a dropdown — same, auto-advances.</li>
+    <li>Pressing <span class="shortcut">Shift+Enter</span> to go back one step (works multiple times).</li>
+    <li>Pressing <span class="shortcut">Esc</span> to skip non-required fields.</li>
+    <li>Using the arrow keys to move between option buttons in a grid layout.</li>
+  </ul>
+
+  <h3>Conditional fields</h3>
+  <p>Fields that don't apply are silently skipped. If you select <em>RawMaterial = Indeterminate</em>, the wizard will skip fields that depend on knowing the material. Change the condition retroactively (via <strong>Back</strong>) and any now-invalid downstream values are <strong>cleared automatically</strong> — you don't need to wipe them by hand.</p>
+
+  <h3>Current Record panel</h3>
+  <p>The right-hand panel shows everything you've already confirmed for the current record, in real time. The field you're currently typing in is highlighted in yellow. Carry-forward values from the previous record (Square, Unit, etc.) pre-fill the inputs but stay hidden until you confirm them, so the panel always starts clean on a new record.</p>
+
+  <h3>Automatic save</h3>
+  <p>When you reach the end of the applicable fields, the record is <strong>saved automatically</strong> — no review step. A new record starts immediately, and if your ID ends in digits it auto-increments (<code>BPA-001 → BPA-002</code>).</p>
+
+  <div class="callout">
+    <strong>Editing past records:</strong> <strong>Edit Last Record</strong> (sidebar) or <strong>Edit Selected</strong> in View Records opens a modal where you can change one field or all fields, with the same validation as new entries. <strong>Duplicate</strong> creates a fresh record pre-filled from a chosen one.
+  </div>
+</section>
+
+<section id="schema">
+  <h2>4. The schema (CFG)</h2>
+  <p>The schema is a plain text file in <code>schemas/</code>. Each block defines one field:</p>
+  <pre><code>[RawMaterial]
+TYPE=MENU
+PROMPT=Select the raw material:
+MENU=Quartzite,Quartz,Chert,Silcrete,Other
+REQUIRED=True
+CARRY=True</code></pre>
+
+  <p>The Schema tab has four sub-tabs:</p>
+  <div class="feature-grid">
+    <div class="feature">
+      <h4>Editor</h4>
+      <p>Edit the CFG text directly. Validate before saving — invalid CFGs cannot overwrite your file.</p>
+    </div>
+    <div class="feature">
+      <h4>Add Field</h4>
+      <p>Form to append one field with prompt, type, options, ranges, and conditions.</p>
+    </div>
+    <div class="feature">
+      <h4>Edit Field</h4>
+      <p>Pick an existing field and change any of its properties through the form.</p>
+    </div>
+    <div class="feature">
+      <h4>Reorder / Delete</h4>
+      <p>Change field order or remove a field (existing data in the CSV is preserved).</p>
+    </div>
+  </div>
+
+  <h3>Field types</h3>
+  <table>
+    <tr><th>Type</th><th>Use for</th></tr>
+    <tr><td><code>TEXT</code></td><td>IDs, free-form short strings (with optional regex <code>PATTERN=</code>)</td></tr>
+    <tr><td><code>NUMERIC</code></td><td>Measurements (with optional <code>MIN=</code> / <code>MAX=</code>)</td></tr>
+    <tr><td><code>MENU</code></td><td>Categorical options (define with <code>MENU=A,B,C</code>)</td></tr>
+    <tr><td><code>BOOLEAN</code></td><td>Yes/No shorthand</td></tr>
+    <tr><td><code>NOTE</code></td><td>Multi-line observations</td></tr>
+    <tr><td><code>IMAGE</code></td><td>Path to a photo (shows inline preview if file exists)</td></tr>
+  </table>
+
+  <h3>Conditions</h3>
+  <p>A field can be shown only when other fields take certain values:</p>
+  <pre><code>[Notes]
+TYPE=NOTE
+PROMPT=Notes:
+CONDITION1=HasNotes Yes</code></pre>
+
+  <p>Combine conditions: by default AND, add <code>OR</code> at the end of a line to OR-combine with the next.</p>
+  <pre><code>CONDITION1=Class Tool OR
+CONDITION2=Class Core
+CONDITION3=Material NOT Indeterminate</code></pre>
+
+  <p>Full syntax reference: see <code>schemas/README.md</code> in your project.</p>
+</section>
+
+<section id="reports">
+  <h2>5. Reports</h2>
+  <p>Three sub-tabs:</p>
+
+  <h3>Overview</h3>
+  <p>Auto-generated bar charts for menu fields, violin+box plot of all numeric variables, summary statistics table. Three-slot filters let you slice the data (e.g. one square at a time). Download a multi-page PDF with cover, plots, stats, and any captured custom plots, or export just the summary statistics table as CSV.</p>
+
+  <h3>Build Your Own</h3>
+  <p>Point-and-click report builder. The controls adapt to the plot type:</p>
+  <table>
+    <tr><th>Plot type</th><th>What you supply</th></tr>
+    <tr><td>Bar / Stacked / Grouped / Proportional</td><td>X categorical (+ group for stack/grouped)</td></tr>
+    <tr><td>Boxplot / Violin</td><td>X categorical, Y numeric (optional group)</td></tr>
+    <tr><td>Density / Histogram</td><td>Numeric variable (optional group)</td></tr>
+    <tr><td>Scatter</td><td>X numeric, Y numeric (optional color)</td></tr>
+  </table>
+  <p><strong>Facet</strong> splits the plot into small multiples by any categorical variable. <strong>Quick presets</strong> pre-fill the controls for common analyses. Three ways to take results out of the app:</p>
+  <ul>
+    <li><strong>Add to PDF report</strong> queues the plot for the next PDF download (cover page + all captured plots in one document).</li>
+    <li><strong>PNG / JPG 300 dpi</strong> exports the current plot as a high-resolution image, ready for publication.</li>
+    <li><strong>Table CSV</strong> exports the underlying cross-tabulation or summary table.</li>
+  </ul>
+
+  <h3>PCA &amp; Correspondence Analysis</h3>
+  <p>Two dedicated tabs for multivariate analysis. PCA: pick numeric variables, optionally color by category; scores, scree, and loadings. CA: pick two categorical variables; biplot of row+column points and inertia per dimension. Each tab has its own PNG/JPG 300 dpi export, and PCA also exports the loadings as CSV. Either can be captured into the PDF report.</p>
+  <div class="callout">
+    <strong>Filters are shared.</strong> Whatever you set in the three-slot filter on the Overview tab also applies to Build Your Own, PCA, and CA. A status banner at the top of each tab shows the active filter and the resulting record count, so you always know what data is being analyzed.
+  </div>
+</section>
+
+<section id="data">
+  <h2>6. Data files &amp; backups</h2>
+  <p>Every save writes two files side-by-side:</p>
+  <ul>
+    <li><code>data/MySite.csv</code> — primary data, git-friendly, opens in Excel/R/anything.</li>
+    <li><code>data/MySite.json</code> — parallel JSON dump, preserves structure.</li>
+  </ul>
+  <p>Plus:</p>
+  <ul>
+    <li><code>backups/</code> — rolling backups (last 10 timestamped copies, oldest auto-pruned).</li>
+    <li><code>audit.log</code> — JSONL log of every save, update, delete, and mass-edit with timestamp and analyst.</li>
+    <li><code>log/rstone.log</code> — debug log.</li>
+  </ul>
+  <p>If something goes wrong, you can always restore the most recent backup. The atomic write pattern (write to <code>.tmp</code>, then rename) means a crash never corrupts the main file.</p>
+</section>
+
+<section id="git">
+  <h2>7. Sync &amp; share</h2>
+  <p>The whole project — code, config, data, audit — sits in one folder, so you can put it under git as-is.</p>
+  <pre><code>cd MyProject
+git init
+git remote add origin https://github.com/YOU/MyProject.git
+git add .
+git commit -m "Initial setup"
+git push -u origin main</code></pre>
+
+  <p>Then from the <strong>Export &amp; Git</strong> tab inside the app:</p>
+  <ul>
+    <li><strong>Pull from GitHub</strong> — fetches the latest data, reloads.</li>
+    <li><strong>Commit &amp; Push</strong> — stages CSV + JSON + audit.log, commits with a descriptive message, pushes.</li>
+  </ul>
+
+  <p>Each user/lab keeps their own repo. Multi-machine work is just <code>git pull</code> on the other machine.</p>
+</section>
+
+<section id="shortcuts">
+  <h2>8. Keyboard shortcuts</h2>
+  <table>
+    <tr><th>Shortcut</th><th>Action</th></tr>
+    <tr><td><span class="shortcut">Enter</span></td><td>Advance / commit field</td></tr>
+    <tr><td><span class="shortcut">Shift+Enter</span></td><td>Back one field (newline in Notes field)</td></tr>
+    <tr><td><span class="shortcut">Esc</span></td><td>Skip current field (if optional)</td></tr>
+    <tr><td><span class="shortcut">←</span> <span class="shortcut">→</span></td><td>Move between option buttons</td></tr>
+    <tr><td><span class="shortcut">↑</span> <span class="shortcut">↓</span></td><td>Move to button above / below in the grid</td></tr>
+    <tr><td><span class="shortcut">Space</span></td><td>Select focused button</td></tr>
+    <tr><td><span class="shortcut">Ctrl+D</span></td><td>Duplicate last record</td></tr>
+  </table>
+</section>
+
+<section id="faq">
+  <h2>9. FAQ</h2>
+
+  <h3>The app says my schema has an error and won't save. What now?</h3>
+  <p>Read the red toast — it tells you which field/line is wrong. Your CFG file on disk is unchanged. Fix the textarea content and click <strong>Apply &amp; Save</strong> again, or click <strong>Reload from File</strong> to discard your edits.</p>
+
+  <h3>I see <em>"Locked by another process"</em>.</h3>
+  <p>Another RStone instance has the same CSV open (or one crashed and left a stale lock). If you're sure no one else is editing, delete the <code>.lock</code> file next to your CSV.</p>
+
+  <h3>Why is saving the last field slower than the others?</h3>
+  <p>That's when the full save happens: validate everything, rotate backups, atomic-write CSV and JSON, append the audit log. Usually well under a second; on slow disks or large datasets a bit more. This is durability, not waste.</p>
+
+  <h3>What happens to a field's data if I delete the field from the schema?</h3>
+  <p>The column stays in the CSV (so historical data isn't lost) but the wizard stops asking about it. Removing the column from the CSV by hand is safe if you decide later you want to clean it up.</p>
+
+  <h3>How do I move between projects?</h3>
+  <p>Either clone the repo into a separate folder per project, or change <strong>Database file</strong> and <strong>Active schema</strong> in Settings and click <strong>Save Settings</strong>.</p>
+
+  <h3>Does dark mode persist?</h3>
+  <p>Yes — saved in <code>config.json</code>.</p>
+
+  <h3>Can I edit the CFG file outside the app?</h3>
+  <p>Yes — any text editor. The app reloads it the next time you launch or when you click <strong>Reload from File</strong>.</p>
+</section>
+
+</main>
+
+<footer>
+  <p>RStone is open source under the <a href="https://github.com/YOU/RStone/blob/main/LICENSE">MIT License</a>. It reuses the CFG file format and conditional-entry concept developed for <a href="https://github.com/surf3s/E5">E5</a> by Shannon McPherron.</p>
+  <p>Documentation last updated 2026.</p>
+</footer>
+
+</body>
+</html>

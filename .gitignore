@@ -1,0 +1,33 @@
+# ── RStone runtime artifacts ────────────────────────────────
+# Debug/info log (rotating) — local only
+log/
+
+# Rolling CSV backups — local crash-recovery only
+backups/
+
+# Lock files guarding the data CSV on shared drives
+*.lock
+
+# In-flight atomic writes
+*.tmp.*
+
+# Per-machine project settings. RStone recreates this from the
+# welcome dialog on first launch, so the template stays clean.
+# Want your settings versioned in your OWN repo? Commit it with:
+#     git add -f config.json
+config.json
+
+# Uploaded field images can get large; track them only if you
+# want them in git. Uncomment the next line to ignore them.
+# data/images/
+
+# ── R / RStudio ─────────────────────────────────────────────
+.Rproj.user/
+.Rhistory
+.RData
+.Ruserdata
+*.Rproj
+
+# ── OS cruft ────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
