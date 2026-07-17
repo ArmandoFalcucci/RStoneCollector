@@ -16,6 +16,26 @@
   a
 }
 
+# ===== schema metadata block =====
+# The optional block at the top of a CFG holds project metadata (TABLE=, DATABASE=)
+# rather than a recording field. Any block with one of these names is treated as
+# metadata. "[RStone]" is the natural choice; "[E5]" is kept for compatibility
+# with schemas written in the original E5 format.
+META_BLOCK_NAMES <- c("RSTONE", "E5", "META", "CONFIG", "SCHEMA", "SETTINGS")
+
+# A block is metadata if it carries a recognised name, OR it looks like metadata
+# (has TABLE=/DATABASE= and none of the field-defining keys). The second test
+# stops a stray title block from silently becoming a phantom first field.
+is_meta_block <- function(nm, b) {
+  if (toupper(nm) %in% META_BLOCK_NAMES) return(TRUE)
+  keys <- toupper(names(b))
+  has_meta_key  <- any(c("TABLE", "DATABASE") %in% keys)
+  has_field_key <- any(c("TYPE", "PROMPT", "MENU", "MENU_FILE",
+                         "MIN", "MAX", "PATTERN", "CARRY", "UNIQUE",
+                         "REQUIRED", "REQUIRED_IF") %in% keys)
+  has_meta_key && !has_field_key
+}
+
 is_empty_val <- function(v) {
   tryCatch({
     if (is.null(v)) return(TRUE)
@@ -76,7 +96,7 @@ parse_cfg <- function(text) {
     if (grepl("^\\[.+\\]$", line)) {
       current <- toupper(sub("^\\[(.+)\\]$", "\\1", line))
       blocks[[current]] <- list()
-      if (!is.null(current_section) && current != "E5")
+      if (!is.null(current_section) && !current %in% META_BLOCK_NAMES)
         sections[[current]] <- current_section
     } else if (!is.null(current) && grepl("=", line, fixed = TRUE)) {
       eq  <- regexpr("=", line, fixed = TRUE)
@@ -136,8 +156,10 @@ build_schema <- function(text_or_path, schema_dir = "schemas") {
   parsed <- parse_cfg(text)
   blocks <- parsed$blocks
   sections <- parsed$sections
-  meta   <- blocks[["E5"]] %||% list()
-  fields <- setdiff(names(blocks), "E5")
+  is_meta <- vapply(names(blocks),
+                    function(nm) is_meta_block(nm, blocks[[nm]]), logical(1))
+  meta   <- if (any(is_meta)) blocks[[ which(is_meta)[1] ]] else list()
+  fields <- names(blocks)[!is_meta]
   if (!length(fields)) stop("Schema has no field definitions.")
 
   OPTS <- list(); TYPES <- list(); PROMPTS <- list(); CONDS <- list()
@@ -404,18 +426,10 @@ next_id <- function(last_id) {
 
 list_schemas <- function(dir_path) {
   fs <- list.files(dir_path, pattern = "\\.(cfg|CFG|txt|ini)$",
-                   full.names = TRUE, recursive = TRUE)
+                   full.names = TRUE)
   if (!length(fs)) return(character(0))
-  # Label: relative path from dir_path; prefix examples for clarity
-  labels <- vapply(fs, function(p) {
-    rel <- sub(paste0("^", normalizePath(dir_path, winslash = "/", mustWork = FALSE), "/?"),
-               "", normalizePath(p, winslash = "/", mustWork = FALSE))
-    if (grepl("^examples/", rel)) paste0("[example] ", sub("^examples/", "", rel))
-    else rel
-  }, character(1))
-  # Sort: top-level first, then examples
-  is_example <- grepl("^\\[example\\]", labels)
-  ord <- order(is_example, labels)
+  labels <- basename(fs)
+  ord <- order(labels)
   setNames(fs[ord], labels[ord])
 }
 
@@ -486,8 +500,8 @@ extract_blocks_text <- function(cfg_text) {
 
 reorder_cfg <- function(cfg_text, ordered_field_names) {
   ex <- extract_blocks_text(cfg_text)
-  # keep [E5] always first
-  e5_idx <- which(ex$names == "E5")
+  # keep the metadata block always first
+  e5_idx <- which(toupper(ex$names) %in% META_BLOCK_NAMES)
   others <- setdiff(seq_along(ex$names), e5_idx)
   name_map <- setNames(ex$blocks[others], ex$names[others])
   ordered <- toupper(ordered_field_names)
@@ -503,7 +517,8 @@ reorder_cfg <- function(cfg_text, ordered_field_names) {
 
 delete_cfg_field <- function(cfg_text, field_name) {
   ex <- extract_blocks_text(cfg_text)
-  keep <- toupper(ex$names) != toupper(field_name) | ex$names == "E5"
+  keep <- toupper(ex$names) != toupper(field_name) |
+          toupper(ex$names) %in% META_BLOCK_NAMES
   parts <- c(if (nzchar(ex$header)) ex$header else NULL, ex$blocks[keep])
   paste(parts, collapse = "\n\n")
 }

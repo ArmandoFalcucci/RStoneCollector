@@ -1,51 +1,27 @@
 # RStone
 
-**A wizard-style data-entry app for lithic analysis.** One question at a time, conditional fields auto-skip when they don't apply, every value carries forward sensibly, and your data lives in a plain CSV (with a parallel JSON copy) you can commit to GitHub.
+**A wizard-style data-entry and analysis app for lithic analysis.** RStone walks you through recording one field at a time — conditional fields auto-skip when they don't apply, values carry forward sensibly, and each attribute appears in a live panel on the right as you confirm it. Your data lives in a plain CSV (with a parallel JSON copy) that you can back up, version, and push to GitHub straight from the app. Beyond data entry, RStone edits records in several ways, visualises them (including PCA and correspondence analysis), and exports everything — figures, tables, and the underlying **R code** — so your analysis is reproducible.
 
-The variable set is **fully user-configurable** — RStone reads its schema from a CFG file (the same format as **E5** by McPherron, <https://github.com/surf3s/E5>), extended with sections, numeric ranges, regex patterns, conditional-required, and external menu lookups. RStone ships with [`schemas/default.cfg`](schemas/default.cfg) as a generic starting point and [`schemas/examples/`](schemas/examples/) for fully worked schemas you can study or copy.
+The variable set is **fully user-configurable**. RStone reads its schema from a plain-text CFG file that you can edit right inside the app (or in any text editor), and the wizard adapts automatically — no code changes needed. RStone ships with [`schemas/default.cfg`](schemas/default.cfg) as a generic starting point; drop any additional `.cfg` files into `schemas/` and switch between them in Settings.
 
-**Bring your own schema.** This app is designed for any lithic site or analytical protocol. Start with `default.cfg`, edit it in the Schema tab (or any text editor) until it matches your recording sheet, and the wizard adapts automatically.
+The conditional data-entry concept and CFG format originate in **E5** by Shannon McPherron (<https://github.com/surf3s/E5>). RStone is an independent R/Shiny re-implementation that extends the idea considerably — see [What RStone adds](#what-rstone-adds) below and [`NOTICE.md`](NOTICE.md) for full attribution.
 
 > **Setting up RStone for your own project?** See [DISTRIBUTION.md](DISTRIBUTION.md) — it walks you through cloning, pointing the project at your own GitHub repo, and the daily commit workflow.
 
 ---
 
-## Highlights
+## What RStone adds
 
-**Wizard data entry**
-- One field at a time with skip logic — conditional fields appear only when their conditions are met.
-- Carry-forward fields (Square, Unit…) pre-fill the next record; IDs ending in digits auto-increment (`BPA-001 → BPA-002`).
-- Section breadcrumb ("Section 3 of 7: Cortex") from `[*Section Name*]` markers.
-- Keyboard-driven: `Enter` = Next, `Shift+Enter` = Back (newline inside notes), `Esc` = Skip, `Ctrl+D` = duplicate last record.
-- Live **Current Record** panel showing only confirmed fields; `IMAGE` fields upload a photo and show an inline preview.
+RStone keeps the one-question-at-a-time, auto-skip philosophy of E5 and builds a full analysis environment around it:
 
-**Validation & safety**
-- `MIN=` / `MAX=` numeric ranges, `PATTERN=` regex for text, menu-membership checks, and `REQUIRED_IF=` conditional-required.
-- **Atomic CSV writes** (temp file then rename), **rolling backups** (last 10 in `backups/`), a **lock file** guarding shared-drive edits, **structured logging** to `log/rstone.log`, and an **audit log** (`audit.log`) of every save/update/delete/mass-edit.
-
-**Reports & analysis**
-- Auto-generated overview (bar charts, violin+box, summary stats) with multi-page PDF export.
-- **Build Your Own** plots with optional statistical annotations (ANOVA → Kruskal-Wallis fallback, chi-square → Fisher fallback, Pearson r).
-- **PCA** and **Correspondence Analysis** tabs.
-- **Report Builder** — capture plots across tabs, reorder them, add headings, and compile one PDF.
-- **Reproducible R-script export** — every analysis (overview, Build-Your-Own, PCA, CA, and the combined report) can be downloaded as a runnable `.R` script.
-- Publication-ready **PNG / JPG at 300 dpi** and **CSV** table exports per plot.
-
-**Records management**
-- Full table with filters (multi-select), row-level Edit / Duplicate / Delete, and **mass-edit** across the current filter (validated, audit-logged).
-
----
-
-## What's new since vXX
-
-- **Reproducible R-script export** on every analysis tab, plus a combined-report script from the Report Builder.
-- **Report Builder** tab: capture, reorder, and caption plots from Build-Your-Own / PCA / CA into a single compiled PDF.
-- **IMAGE field type** with photo upload that auto-renames to `<RecordID>.<ext>` under `data/images/`.
-- **Multi-select filters** (`shinyWidgets` picker) in View Records and Reports.
-- **Menu-style setting** (buttons / auto / dropdown) in Settings, persisted to `config.json`.
-- Performance fixes in the Build-Your-Own module and an image-rename hook on record edits.
-
----
+- **Edit your schema live in the app.** The Schema tab lets you add, edit, reorder, and delete fields through friendly forms — with validation before anything is written — or edit the raw CFG directly. No restart, no external tools.
+- **A live attribute panel.** As you confirm each field, it appears in the **Current Record** panel on the right, so you always see what you've entered so far.
+- **Several ways to edit records.** Fix the last record, duplicate one as the basis for the next, edit any row from the table, or **mass-edit** every record matching a filter at once — all validated and audit-logged.
+- **Visualisation built in.** Auto overview charts, a **Build-Your-Own** plot builder with optional statistical annotations, plus dedicated **PCA** and **Correspondence Analysis** tabs.
+- **Reproducible by design.** Every analysis exports as a runnable **R script**, alongside publication-ready **PNG/JPG at 300 dpi** and **CSV** tables. A **Report Builder** compiles captured plots into a single PDF.
+- **Your data stays safe.** Atomic CSV writes (no half-written files), automatic **rolling `.bak` backups**, a lock file for shared drives, structured logging, and a full **audit log** of every change.
+- **Version control from the app.** Commit and push your CSV, JSON, and audit log to **GitHub** directly from the Export & Git tab — your off-machine backup and full history in one step.
+- **Images, sections, and validation.** `IMAGE` fields with inline previews, `[*Section*]` breadcrumbs, and per-field rules (`MIN`/`MAX`, regex `PATTERN`, menu membership, conditional-required).
 
 ## Folder layout
 
@@ -74,8 +50,7 @@ RStone/
 │   └── server_meta.R        ← settings, export, git
 ├── schemas/
 │   ├── default.cfg          ← generic starter (shipped)
-│   ├── README.md            ← CFG syntax guide
-│   └── examples/            ← worked schemas ([example] prefix in the app)
+│   └── README.md            ← CFG syntax guide
 ├── assets/                  ← optional logo.(svg|png|jpg)
 ├── data/                    ← your CSV + JSON (+ images/) — committed
 ├── backups/                 ← rolling backups (gitignored)
@@ -120,6 +95,11 @@ The **Data Entry** tab asks one field at a time.
 
 When you reach the end of the applicable fields the record is **saved automatically** — no review step. The right-hand **Current Record** panel shows only fields you have *confirmed* this record; the field you're currently editing is highlighted.
 
+**Record IDs are always unique.** If you enter an ID that already exists, RStone refuses it — you're warned the moment you press Next on the ID field, and again at save — so you can never overwrite an existing record by accident. How the next record's ID is pre-filled is your choice in **Settings → Record IDs**:
+
+- **Kept the same** (default) — the previous ID carries over so you can edit it (e.g. type the next bag/find number, or change the last digit). This suits IDs that come from excavation records rather than a running counter.
+- **Auto-incremented** — trailing digits increment automatically (`BPA-001 → BPA-002`) for consecutive numbering.
+
 **Notes gate pattern.** The default schema demonstrates a Yes/No gate: a `HasNotes` field appears first, and only if you answer Yes does the `Notes` textarea appear. Reuse it for any optional verbose entry.
 
 ---
@@ -133,7 +113,7 @@ Four sub-tabs:
 - **Edit Field** — pick a field, see its properties pre-filled, change any subset, save.
 - **Reorder / Delete** — move a field up/down or delete it (with confirmation).
 
-CFG files in `schemas/` appear in **Settings → Active schema** automatically — including any in `schemas/examples/` (shown with an `[example]` prefix). Uploading a CFG from Settings lands it in `schemas/` too.
+Any `.cfg` file you place in `schemas/` appears in **Settings → Active schema** automatically. Uploading a CFG from Settings lands it in `schemas/` too.
 
 **Full CFG syntax reference and a "designing your own schema" walkthrough:** [`schemas/README.md`](schemas/README.md).
 
@@ -232,6 +212,8 @@ If RStone helps your research, please cite it — see [`CITATION.cff`](CITATION.
 RStone reuses the configuration-file (CFG) format and the conditional data-entry concept originally developed for **E5** by **Shannon P. McPherron** (Max Planck Institute for Evolutionary Anthropology), distributed under the MIT License — see <https://github.com/surf3s/E5>. E5 is itself the descendant of E4 (Shannon McPherron with Harold L. Dibble) and Entrer Trois (with Simon Holdaway).
 
 RStone is an **independent re-implementation in R/Shiny** by **Armando Falcucci**. No source code from E5 is included; the CFG syntax has been extended with section markers, numeric ranges, regex patterns, conditional-required, and external menu lookups. Features built on top include the wizard's live summary panel, dynamic Build-Your-Own reports with statistical annotations, PCA and Correspondence Analysis, the Report Builder, reproducible R-script export, mass-edit, the audit log, atomic writes with rolling backups, and direct git integration.
+
+RStone was built with the help of **Claude Opus 4.8** (Anthropic).
 
 See [`NOTICE.md`](NOTICE.md) for full third-party attributions and the E5 license text.
 

@@ -19,6 +19,7 @@ setup_meta_server <- function(input, output, session, rv, shared) {
     updateTextInput(session, "set_db_file", value = cfg$database_file %||% "")
     updateRadioButtons(session, "set_theme",      selected = cfg$theme      %||% "light")
     updateRadioButtons(session, "set_menu_style", selected = cfg$menu_style %||% "buttons")
+    updateRadioButtons(session, "set_id_mode",    selected = cfg$id_mode    %||% "manual")
     schemas <- list_schemas(SCHEMAS_DIR)
     if (!length(schemas)) schemas <- setNames(DEFAULT_SCHEMA, basename(DEFAULT_SCHEMA))
     updateSelectInput(session, "set_schema_file",
@@ -49,6 +50,17 @@ setup_meta_server <- function(input, output, session, rv, shared) {
     }
   }, ignoreInit = TRUE)
 
+  # Persist ID numbering mode on change
+  observeEvent(input$set_id_mode, {
+    im <- input$set_id_mode %||% "manual"
+    cfg <- rv$config %||% list()
+    if (!identical(cfg$id_mode %||% "manual", im)) {
+      cfg$id_mode <- im
+      save_config(cfg, CONFIG_FILE)
+      rv$config <- cfg
+    }
+  }, ignoreInit = TRUE)
+
   observeEvent(input$btn_save_settings, {
     tryCatch({
       cfg <- rv$config %||% list()
@@ -57,6 +69,7 @@ setup_meta_server <- function(input, output, session, rv, shared) {
       cfg$database_file <- trimws(input$set_db_file %||% file.path(DATA_DIR, "data.csv"))
       cfg$theme         <- input$set_theme      %||% "light"
       cfg$menu_style    <- input$set_menu_style %||% "buttons"
+      cfg$id_mode       <- input$set_id_mode    %||% "manual"
       save_config(cfg, CONFIG_FILE)
       rv$config <- cfg
       sch <- rv$schema

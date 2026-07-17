@@ -13,6 +13,24 @@ setup_wizard_server <- function(input, output, session, rv, shared) {
     log_warn(msg)
   }
 
+  # ---------- ID uniqueness ----------
+  id_field_name <- function() {
+    sch <- rv$schema; if (is.null(sch)) return(NULL)
+    sch$UNIQUE[1] %||% sch$fields[1]
+  }
+  # TRUE if `val` already exists in the data for the ID field, other than the
+  # record currently being edited (rv$editing_id).
+  id_is_duplicate <- function(val) {
+    if (is_empty_val(val)) return(FALSE)
+    idf <- id_field_name()
+    if (is.null(idf) || is.null(rv$data) || !idf %in% names(rv$data)) return(FALSE)
+    editing <- rv$editing_id %||% ""
+    if (!is_empty_val(editing) &&
+        identical(as.character(val), as.character(editing))) return(FALSE)
+    col <- as.character(rv$data[[idf]])
+    any(!is.na(col) & col == as.character(val))
+  }
+
   # ---------- field navigation ----------
   next_visible <- function(s) {
     sch <- rv$schema; if (is.null(sch)) return(NA_integer_)
@@ -356,10 +374,23 @@ setup_wizard_server <- function(input, output, session, rv, shared) {
       id_val <- if (!is.null(id_field) && id_field %in% names(new_row))
                   new_row[[id_field]][1] else ""
       action <- "save"
+      editing <- rv$editing_id %||% ""
+      is_edit <- !is_empty_val(editing)
       if (!is_empty_val(id_val) && !is.null(id_field) && id_field %in% names(df)) {
-        existing <- which(!is.na(df[[id_field]]) & df[[id_field]] == id_val)
-        if (length(existing)) {
-          df[existing[1], ] <- new_row
+        existing <- which(!is.na(df[[id_field]]) &
+                          as.character(df[[id_field]]) == as.character(id_val))
+        editing_row <- if (is_edit)
+          which(!is.na(df[[id_field]]) &
+                as.character(df[[id_field]]) == as.character(editing)) else integer(0)
+        # A collision that is NOT the record we're editing = duplicate -> refuse.
+        if (length(existing) && !(is_edit && identical(as.character(id_val),
+                                                        as.character(editing)))) {
+          notify_err(sprintf(
+            "ID '%s' already exists - not saved. Change it to a unique value.", id_val))
+          return(invisible())
+        }
+        if (is_edit && length(editing_row)) {
+          df[editing_row[1], ] <- new_row
           action <- "update"
           notify_ok(paste0("Updated: ", id_val))
         } else {
@@ -377,7 +408,13 @@ setup_wizard_server <- function(input, output, session, rv, shared) {
       carry <- list()
       for (c in sch$CARRY) carry[[c]] <- e[[c]]
       uf <- sch$UNIQUE[1]
-      if (!is.null(uf)) carry[[uf]] <- next_id(e[[uf]])
+      if (!is.null(uf)) {
+        # "increment" = consecutive auto-numbering; "manual" = keep the ID so the
+        # user edits it (the duplicate check stops an unchanged ID being re-saved).
+        id_mode <- rv$config$id_mode %||% "manual"
+        carry[[uf]] <- if (identical(id_mode, "increment")) next_id(e[[uf]]) else e[[uf]]
+      }
+      rv$editing_id <- NULL
       rv$entries    <- carry
       rv$confirmed  <- character()
       rv$step       <- 1L
@@ -424,6 +461,14 @@ setup_wizard_server <- function(input, output, session, rv, shared) {
       err <- validate_value(cf$field, v, rv$schema)
       if (!is.null(err)) { notify_err(sprintf("%s: %s", cf$prompt, err)); return() }
 
+      # Block a duplicate record ID here, so the user fixes it right away rather
+      # than discovering it only at save.
+      if (identical(cf$field, id_field_name()) && id_is_duplicate(v)) {
+        notify_err(sprintf(
+          "ID '%s' already exists. Change it to a unique value before continuing.", v))
+        return()
+      }
+
       rv$confirmed <- union(rv$confirmed, cf$field)
       purge_unmet()
       nxt <- next_visible(cf$idx + 1L)
@@ -456,6 +501,7 @@ setup_wizard_server <- function(input, output, session, rv, shared) {
 
   observeEvent(input$btn_new_record, {
     rv$entries <- list(); rv$step <- 1L; rv$confirmed <- character()
+    rv$editing_id <- NULL
     rv$live_field <- NULL; rv$live_value <- ""
     updateTabItems(session, "tabs", "entry")
   })
@@ -480,10 +526,13 @@ setup_wizard_server <- function(input, output, session, rv, shared) {
     if (isTRUE(dup)) {
       uf <- sch$UNIQUE[1]
       if (!is.null(uf)) e[[uf]] <- next_id(e[[uf]])
+      rv$editing_id <- NULL                 # a duplicate is a brand-new record
       notify_ok(paste("Duplicated from", rec[[sch$UNIQUE[1]]] %||% "record",
                       "- review and save."))
       rv$confirmed <- character()
     } else {
+      uf <- sch$UNIQUE[1]
+      rv$editing_id <- if (!is.null(uf)) as.character(e[[uf]] %||% "") else ""
       rv$confirmed <- names(e)
       notify_ok(paste("Loaded:", e[[sch$UNIQUE[1]]] %||% "record"))
     }

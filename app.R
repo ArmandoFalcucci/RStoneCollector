@@ -1,5 +1,5 @@
 # ============================================================
-#  RStone  -  Lithic Analysis Data Entry  (modular build, v6)
+#  RStone  -  Lithic Analysis Data Entry  (modular build)
 #  Run from this folder with:  shiny::runApp()
 # ============================================================
 
@@ -7,7 +7,7 @@ suppressPackageStartupMessages({
   library(shiny)
   library(shinydashboard)
   library(shinyjs)
-  library(shinyWidgets)        # NEW in v6: pickerInput for multi-select filters
+  library(shinyWidgets)
   library(DT)
   library(ggplot2)
   library(dplyr)
@@ -490,7 +490,7 @@ server <- function(input, output, session) {
       p("Set up your project. You can change everything later in Settings."),
       textInput("setup_site", "Site / project name:",
                 value = "",
-                placeholder = "e.g. Boomplaas Cave, Howiesons Poort 2024..."),
+                placeholder = "e.g. Ksar Akil, Fumane Cave..."),
       textInput("setup_analyst", "Analyst name (for audit log):",
                 value = "",
                 placeholder = "Your name"),
