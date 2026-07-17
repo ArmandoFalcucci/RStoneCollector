@@ -6,7 +6,10 @@
 `%||%` <- function(a, b) {
   if (is.null(a)) return(b)
   if (length(a) == 0) return(b)
-  if (length(a) == 1) {
+  # Only NA / empty-string checks make sense for atomic length-1 values.
+  # Functions, lists and environments are returned as-is (calling is.na()
+  # on them would warn "applied to non-(list or vector)" and can error).
+  if (is.atomic(a) && length(a) == 1) {
     if (is.na(a)) return(b)
     if (is.character(a) && !nzchar(a)) return(b)
   }

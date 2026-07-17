@@ -295,45 +295,74 @@ setup_schema_server <- function(input, output, session, rv, shared) {
     )
   })
 
-  # Edit-field condition rows: count seeded from saved schema, then user-mutable
+  # Edit-field condition rows.
+  # `editf_cond_seed` is the source of truth for what the rows should show. It is
+  # reseeded from the saved schema whenever the user picks a different field or
+  # hits Reset, and is updated (preserving current typing) when rows are added or
+  # removed. The renderUI reads ONLY from this seed — never from persisted input
+  # values — so switching fields always reloads the saved conditions, including
+  # the very first one.
   editf_cond_count <- reactiveVal(1L)
+  editf_cond_seed  <- reactiveVal(list())
 
-  # When the user picks a different field (or hits Reset), seed the row count from saved schema
+  blank_cond_row <- function() list(field = "", not = FALSE, vals = "", op = "AND")
+
+  # Read whatever the user currently has typed in the condition inputs, so we can
+  # preserve it across +/- changes.
+  capture_editf_rows <- function() {
+    n <- editf_cond_count()
+    lapply(seq_len(n), function(i) list(
+      field = input[[paste0("editf_cond_field_", i)]] %||% "",
+      not   = isTRUE(input[[paste0("editf_cond_not_", i)]]),
+      vals  = input[[paste0("editf_cond_vals_", i)]] %||% "",
+      op    = input[[paste0("editf_cond_op_", i)]] %||% "AND"
+    ))
+  }
+
+  # Reseed from the saved schema on field change / Reset.
   observe({
     sch <- rv$schema
     f <- input$editf_field
     editf_reset_trigger()
     if (is.null(sch) || is.null(f) || !nzchar(f)) return()
-    n0 <- length(sch$CONDS[[f]] %||% list())
-    editf_cond_count(max(1L, n0))
+    conds <- sch$CONDS[[f]] %||% list()
+    rows <- lapply(conds, function(cnd) list(
+      field = cnd$f %||% "",
+      not   = isTRUE(cnd$not),
+      vals  = paste(cnd$v, collapse = ","),
+      op    = if (isTRUE(cnd$or)) "OR" else "AND"
+    ))
+    if (!length(rows)) rows <- list(blank_cond_row())
+    editf_cond_seed(rows)
+    editf_cond_count(length(rows))
   })
 
   observeEvent(input$btn_editf_cond_more, {
-    editf_cond_count(editf_cond_count() + 1L)
+    cur <- capture_editf_rows()
+    cur[[length(cur) + 1L]] <- blank_cond_row()
+    editf_cond_seed(cur)
+    editf_cond_count(length(cur))
   })
   observeEvent(input$btn_editf_cond_less, {
-    if (editf_cond_count() > 1L) editf_cond_count(editf_cond_count() - 1L)
+    n <- editf_cond_count()
+    if (n <= 1L) return()
+    cur <- capture_editf_rows()[seq_len(n - 1L)]
+    editf_cond_seed(cur)
+    editf_cond_count(length(cur))
   })
 
   output$editf_cond_rows_ui <- renderUI({
     sch <- rv$schema
     f <- input$editf_field
-    editf_reset_trigger()
     if (is.null(sch) || is.null(f) || !nzchar(f)) return(NULL)
-    conds <- sch$CONDS[[f]] %||% list()
-    n <- editf_cond_count()
+    rows <- editf_cond_seed()
+    n <- max(1L, editf_cond_count())
     lapply(seq_len(n), function(i) {
-      # On the first render the values come from saved schema.
-      # On count changes preserve current input values.
-      saved_i <- if (i <= length(conds)) conds[[i]] else NULL
-      cur_field <- isolate(input[[paste0("editf_cond_field_", i)]])
-      if (is.null(cur_field)) cur_field <- if (!is.null(saved_i)) saved_i$f else ""
-      cur_not <- isolate(input[[paste0("editf_cond_not_", i)]])
-      if (is.null(cur_not)) cur_not <- if (!is.null(saved_i)) isTRUE(saved_i$not) else FALSE
-      cur_vals <- isolate(input[[paste0("editf_cond_vals_", i)]])
-      if (is.null(cur_vals)) cur_vals <- if (!is.null(saved_i)) paste(saved_i$v, collapse = ",") else ""
-      cur_op <- isolate(input[[paste0("editf_cond_op_", i)]])
-      if (is.null(cur_op)) cur_op <- if (!is.null(saved_i) && isTRUE(saved_i$or)) "OR" else "AND"
+      r <- if (i <= length(rows)) rows[[i]] else blank_cond_row()
+      cur_field <- r$field %||% ""
+      cur_not   <- isTRUE(r$not)
+      cur_vals  <- r$vals %||% ""
+      cur_op    <- r$op %||% "AND"
 
       div(class = "cond-row",
         fluidRow(
@@ -342,7 +371,7 @@ setup_schema_server <- function(input, output, session, rv, shared) {
                                  choices  = c("(no condition)" = "", sch$fields),
                                  selected = cur_field)),
           column(2, checkboxInput(paste0("editf_cond_not_", i), "NOT",
-                                   value = isTRUE(cur_not))),
+                                   value = cur_not)),
           column(5, textInput(paste0("editf_cond_vals_", i),
                               "Values (comma-separated):",
                               value = cur_vals))
