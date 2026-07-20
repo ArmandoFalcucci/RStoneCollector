@@ -1,5 +1,5 @@
 # ============================================================
-#  RStone  -  Lithic Analysis Data Entry  (modular build)
+#  RStone  -  Lithic Analysis Data Entry  (modular build, v6)
 #  Run from this folder with:  shiny::runApp()
 # ============================================================
 
@@ -7,7 +7,7 @@ suppressPackageStartupMessages({
   library(shiny)
   library(shinydashboard)
   library(shinyjs)
-  library(shinyWidgets)
+  library(shinyWidgets)        # NEW in v6: pickerInput for multi-select filters
   library(DT)
   library(ggplot2)
   library(dplyr)
@@ -406,7 +406,7 @@ ui <- dashboardPage(
     sidebarMenu(id = "tabs",
       menuItem("Data Entry",   tabName = "entry",    icon = icon("edit")),
       menuItem("View Records", tabName = "view",     icon = icon("table")),
-      menuItem("Reports",      tabName = "reports",  icon = icon("chart-bar")),
+      menuItem("Explore & Check", tabName = "reports",  icon = icon("chart-bar")),
       menuItem("Schema",       tabName = "schema",   icon = icon("sliders-h")),
       menuItem("Settings",     tabName = "settings", icon = icon("cog")),
       menuItem("Export & Git", tabName = "export",   icon = icon("cloud-upload-alt"))

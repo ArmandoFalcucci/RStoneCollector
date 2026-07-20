@@ -114,13 +114,71 @@ setup_reports_server <- function(input, output, session, rv, shared) {
     do.call(rbind, Filter(Negate(is.null), rows))
   }
 
+  # ----- Overview: user-selectable fields -----
+  ov_all_menu <- reactive({
+    sch <- rv$schema; if (is.null(sch)) return(character(0))
+    sch$fields[vapply(sch$fields, function(f)
+      toupper(sch$TYPES[[f]] %||% "TEXT") == "MENU", logical(1))]
+  })
+  ov_all_num <- reactive({
+    sch <- rv$schema; if (is.null(sch)) return(character(0))
+    sch$fields[vapply(sch$fields, function(f)
+      toupper(sch$TYPES[[f]] %||% "TEXT") %in% c("NUMERIC","INSTRUMENT"), logical(1))]
+  })
+  # What actually gets plotted: the user's picks, or a sensible default when empty.
+  ov_bar_fields <- reactive({
+    all <- ov_all_menu()
+    sel <- intersect(input$ov_bar_fields, all)
+    if (!length(sel)) head(all, 6) else sel
+  })
+  ov_meas_fields <- reactive({
+    all <- ov_all_num()
+    sel <- intersect(input$ov_meas_fields, all)
+    if (!length(sel)) all else sel
+  })
+
+  output$ov_controls_ui <- renderUI({
+    sch <- rv$schema
+    if (is.null(sch)) return(tags$em("Load a schema to configure the overview."))
+    menu <- ov_all_menu(); num <- ov_all_num()
+    lbl <- function(f) prompt_label(sch$PROMPTS[[f]] %||% f)
+    menu_choices <- setNames(menu, vapply(menu, lbl, character(1)))
+    num_choices  <- setNames(num,  vapply(num,  lbl, character(1)))
+    # Defaults from saved config (isolated so saving doesn't rebuild this UI).
+    cfg <- isolate(rv$config %||% list())
+    bar_sel  <- intersect(cfg$overview_bar_fields  %||% head(menu, 6), menu)
+    if (!length(bar_sel))  bar_sel  <- head(menu, 6)
+    meas_sel <- intersect(cfg$overview_meas_fields %||% num, num)
+    if (!length(meas_sel)) meas_sel <- num
+    fluidRow(
+      column(6, shinyWidgets::pickerInput(
+        "ov_bar_fields", "Category charts (one bar chart each):",
+        choices = menu_choices, selected = bar_sel, multiple = TRUE,
+        options = shinyWidgets::pickerOptions(
+          actionsBox = TRUE, liveSearch = TRUE, selectedTextFormat = "count > 2"))),
+      column(6, shinyWidgets::pickerInput(
+        "ov_meas_fields", "Measurement variables (distribution plot):",
+        choices = num_choices, selected = meas_sel, multiple = TRUE,
+        options = shinyWidgets::pickerOptions(
+          actionsBox = TRUE, liveSearch = TRUE, selectedTextFormat = "count > 2")))
+    )
+  })
+
+  # Persist the choices per project (config.json).
+  observeEvent(input$ov_bar_fields, {
+    cfg <- rv$config %||% list(); cfg$overview_bar_fields <- input$ov_bar_fields
+    rv$config <- cfg; save_config(cfg, CONFIG_FILE)
+  }, ignoreNULL = FALSE, ignoreInit = TRUE)
+  observeEvent(input$ov_meas_fields, {
+    cfg <- rv$config %||% list(); cfg$overview_meas_fields <- input$ov_meas_fields
+    rv$config <- cfg; save_config(cfg, CONFIG_FILE)
+  }, ignoreNULL = FALSE, ignoreInit = TRUE)
+
   output$report_plots_ui <- renderUI({
     sch <- rv$schema; if (is.null(sch)) return(NULL)
-    menu_fields <- sch$fields[vapply(sch$fields, function(f)
-      toupper(sch$TYPES[[f]] %||% "TEXT") == "MENU", logical(1))]
-    plot_fields <- head(menu_fields, 6)
+    plot_fields <- ov_bar_fields()
     fr <- list()
-    for (i in seq(1, length(plot_fields), by = 2)) {
+    if (length(plot_fields)) for (i in seq(1, length(plot_fields), by = 2)) {
       pair <- plot_fields[i:min(i + 1, length(plot_fields))]
       cols <- lapply(pair, function(f) {
         column(6, box(width = 12,
@@ -130,17 +188,16 @@ setup_reports_server <- function(input, output, session, rv, shared) {
       })
       fr[[length(fr) + 1]] <- do.call(fluidRow, cols)
     }
-    fr[[length(fr) + 1]] <- fluidRow(column(12,
-      box(width = 12, title = "Measurement Distributions", status = "success",
-          plotOutput("plt_meas", height = "360px"))))
+    if (length(ov_meas_fields()))
+      fr[[length(fr) + 1]] <- fluidRow(column(12,
+        box(width = 12, title = "Measurement Distributions", status = "success",
+            plotOutput("plt_meas", height = "360px"))))
     do.call(tagList, fr)
   })
 
   observe({
     sch <- rv$schema; if (is.null(sch)) return()
-    menu_fields <- sch$fields[vapply(sch$fields, function(f)
-      toupper(sch$TYPES[[f]] %||% "TEXT") == "MENU", logical(1))]
-    pick <- head(menu_fields, 6)
+    pick <- ov_bar_fields()
     for (i in seq_along(pick)) {
       local({
         f   <- pick[i]
@@ -154,10 +211,7 @@ setup_reports_server <- function(input, output, session, rv, shared) {
 
   output$plt_meas <- renderPlot({
     sch <- rv$schema; if (is.null(sch)) return(NULL)
-    mcols <- sch$fields[vapply(sch$fields, function(f)
-      toupper(sch$TYPES[[f]] %||% "TEXT") %in% c("NUMERIC","INSTRUMENT"),
-      logical(1))]
-    meas_plot(rpt_df(), mcols)
+    meas_plot(rpt_df(), ov_meas_fields())
   })
 
   stats_data <- reactive({
@@ -169,6 +223,139 @@ setup_reports_server <- function(input, output, session, rv, shared) {
   })
   output$tbl_stats <- renderTable({ stats_data() },
                                    striped = TRUE, hover = TRUE, bordered = TRUE)
+
+  # ===== DATA QUALITY =====
+  # Whole-dataset QC. Deliberately ignores the Overview filters - you want to see
+  # every problem record, not just the filtered ones. Reuses the schema's own
+  # rules so the checks match what the wizard enforces on entry.
+  dq_issues <- reactive({
+    sch <- rv$schema; df <- rv$data
+    if (is.null(sch) || is.null(df) || !nrow(df)) return(NULL)
+    idf <- sch$UNIQUE[1] %||% sch$fields[1]
+    ids <- if (idf %in% names(df)) as.character(df[[idf]]) else as.character(seq_len(nrow(df)))
+    out <- list()
+    add <- function(rows, field, value, issue) {
+      if (!length(rows)) return(invisible())
+      out[[length(out) + 1]] <<- data.frame(
+        Record = ids[rows], Field = field,
+        Value = as.character(value), Issue = issue, stringsAsFactors = FALSE)
+    }
+    for (f in sch$fields) {
+      if (!f %in% names(df)) next
+      col <- as.character(df[[f]])
+      filled <- !is.na(col) & nzchar(trimws(col))
+      type_ <- toupper(sch$TYPES[[f]] %||% "TEXT")
+      if (f %in% sch$REQUIRED) add(which(!filled), f, "", "Required value missing")
+      idx <- which(filled); if (!length(idx)) next
+      v <- col[idx]
+      if (type_ %in% c("NUMERIC","INSTRUMENT")) {
+        n <- suppressWarnings(as.numeric(v))
+        add(idx[is.na(n)], f, v[is.na(n)], "Not a number")
+        mn <- sch$MIN[[f]]; mx <- sch$MAX[[f]]
+        if (!is.null(mn) && !is.na(mn)) { sel <- !is.na(n) & n < mn
+          add(idx[sel], f, v[sel], sprintf("Below minimum (%s)", mn)) }
+        if (!is.null(mx) && !is.na(mx)) { sel <- !is.na(n) & n > mx
+          add(idx[sel], f, v[sel], sprintf("Above maximum (%s)", mx)) }
+      }
+      if (type_ == "MENU") {
+        opts <- sch$OPTS[[f]] %||% character()
+        if (length(opts)) { sel <- !(v %in% opts)
+          add(idx[sel], f, v[sel], "Not a valid menu option") }
+      }
+      pat <- sch$PATTERN[[f]]
+      if (!is.null(pat) && nzchar(pat)) {
+        sel <- !grepl(pat, v, perl = TRUE)
+        add(idx[sel], f, v[sel], sprintf("Doesn't match pattern %s", pat))
+      }
+    }
+    if (idf %in% names(df)) {
+      dup <- which(duplicated(ids) | duplicated(ids, fromLast = TRUE))
+      add(dup, idf, ids[dup], "Duplicate ID")
+    }
+    if (!length(out))
+      return(data.frame(Record = character(0), Field = character(0),
+                        Value = character(0), Issue = character(0)))
+    do.call(rbind, out)
+  })
+
+  dq_completeness <- reactive({
+    sch <- rv$schema; df <- rv$data
+    if (is.null(sch) || is.null(df) || !nrow(df)) return(NULL)
+    flds <- intersect(sch$fields, names(df)); n <- nrow(df)
+    do.call(rbind, lapply(flds, function(f) {
+      col <- as.character(df[[f]])
+      filled <- sum(!is.na(col) & nzchar(trimws(col)))
+      data.frame(Field = prompt_label(sch$PROMPTS[[f]] %||% f),
+                 Missing = n - filled, Pct = round(100 * filled / n, 1),
+                 stringsAsFactors = FALSE)
+    }))
+  })
+
+  dq_outliers <- reactive({
+    sch <- rv$schema; df <- rv$data
+    if (is.null(sch) || is.null(df) || !nrow(df)) return(NULL)
+    mcols <- intersect(sch$fields[vapply(sch$fields, function(f)
+      toupper(sch$TYPES[[f]] %||% "TEXT") %in% c("NUMERIC","INSTRUMENT"),
+      logical(1))], names(df))
+    if (!length(mcols)) return(NULL)
+    do.call(rbind, lapply(mcols, function(f) {
+      lab <- prompt_label(sch$PROMPTS[[f]] %||% f)
+      v <- suppressWarnings(as.numeric(df[[f]])); v <- v[!is.na(v)]
+      if (length(v) < 4)
+        return(data.frame(Field = lab, N = length(v), Min = NA, Max = NA,
+                          `Outliers (1.5 IQR)` = NA, check.names = FALSE,
+                          stringsAsFactors = FALSE))
+      q <- stats::quantile(v, c(.25, .75)); iqr <- q[[2]] - q[[1]]
+      data.frame(Field = lab, N = length(v),
+                 Min = round(min(v), 2), Max = round(max(v), 2),
+                 `Outliers (1.5 IQR)` = sum(v < q[[1]] - 1.5*iqr | v > q[[2]] + 1.5*iqr),
+                 check.names = FALSE, stringsAsFactors = FALSE)
+    }))
+  })
+
+  output$dq_summary <- renderUI({
+    df <- rv$data
+    if (is.null(df) || !nrow(df)) return(tags$em("No records yet."))
+    iss <- dq_issues(); n_iss <- if (is.null(iss)) 0 else nrow(iss)
+    n_rec <- if (n_iss) length(unique(iss$Record)) else 0
+    tags$span(style = "font-size:15px;",
+      sprintf("%d records checked. ", nrow(df)),
+      if (n_iss == 0) tags$strong(style = "color:#2e7d32;", "No issues found.")
+      else tags$strong(style = "color:#c62828;",
+        sprintf("%d issue%s across %d record%s to review.",
+                n_iss, if (n_iss == 1) "" else "s",
+                n_rec, if (n_rec == 1) "" else "s")))
+  })
+
+  output$dq_complete_plot <- renderPlot({
+    d <- dq_completeness(); if (is.null(d)) return(NULL)
+    d$Field <- factor(d$Field, levels = d$Field[order(d$Pct)])
+    ggplot(d, aes(x = Field, y = Pct)) +
+      geom_col(fill = "#1565c0", alpha = .85) +
+      geom_text(aes(label = paste0(Pct, "%")), hjust = -0.1, size = 3.2) +
+      coord_flip(ylim = c(0, 112)) +
+      labs(x = NULL, y = "% of records filled") +
+      theme_minimal(base_size = 12)
+  })
+
+  output$dq_outliers <- renderTable({ dq_outliers() },
+                                     striped = TRUE, hover = TRUE, bordered = TRUE, na = "-")
+
+  output$dq_issues <- DT::renderDT({
+    iss <- dq_issues()
+    if (is.null(iss) || !nrow(iss))
+      return(DT::datatable(data.frame(Message = "No issues found."),
+                           rownames = FALSE, options = list(dom = "t")))
+    DT::datatable(iss, rownames = FALSE, filter = "top",
+                  options = list(pageLength = 15, order = list(list(0, "asc"))))
+  })
+
+  output$dq_dl_csv <- downloadHandler(
+    filename = function() sprintf("data_quality_%s.csv", format(Sys.time(), "%Y%m%d_%H%M")),
+    content  = function(file) {
+      iss <- dq_issues(); if (is.null(iss)) iss <- data.frame()
+      utils::write.csv(iss, file, row.names = FALSE)
+    })
 
   # ===== BUILD YOUR OWN =====
 
@@ -871,11 +1058,8 @@ setup_reports_server <- function(input, output, session, rv, shared) {
                                   format(Sys.time(), "%Y%m%d_%H%M%S")),
     content  = function(file) {
       sch <- rv$schema
-      menu_fields <- sch$fields[vapply(sch$fields, function(f)
-        toupper(sch$TYPES[[f]] %||% "TEXT") == "MENU", logical(1))]
-      mcols <- sch$fields[vapply(sch$fields, function(f)
-        toupper(sch$TYPES[[f]] %||% "TEXT") %in% c("NUMERIC","INSTRUMENT"),
-        logical(1))]
+      menu_fields <- ov_bar_fields()
+      mcols <- ov_meas_fields()
       csv <- rv$config$database_file %||% sch$suggested_db
       writeLines(overview_to_r(menu_fields, mcols, active_filter_conds(), csv),
                  file)
@@ -889,11 +1073,8 @@ setup_reports_server <- function(input, output, session, rv, shared) {
     content = function(file) {
       tryCatch({
         sch <- rv$schema; df <- rpt_df()
-        menu_fields <- sch$fields[vapply(sch$fields, function(f)
-          toupper(sch$TYPES[[f]] %||% "TEXT") == "MENU", logical(1))]
-        mcols <- sch$fields[vapply(sch$fields, function(f)
-          toupper(sch$TYPES[[f]] %||% "TEXT") %in% c("NUMERIC","INSTRUMENT"),
-          logical(1))]
+        menu_fields <- ov_bar_fields()
+        mcols <- ov_meas_fields()
         grDevices::pdf(file, width = 11, height = 8.5)
         on.exit(grDevices::dev.off())
 
@@ -913,12 +1094,12 @@ setup_reports_server <- function(input, output, session, rv, shared) {
                                 length(rv$captured_plots)),
                           y = 0.46, gp = grid::gpar(fontsize = 12, col = "#546e7a"))
 
-        for (i in seq_along(head(menu_fields, 8))) {
-          f <- head(menu_fields, 8)[i]
+        for (i in seq_along(menu_fields)) {
+          f <- menu_fields[i]
           col <- pal[((i - 1) %% length(pal)) + 1]
           print(bar_plot(df, f, prompt_label(sch$PROMPTS[[f]] %||% f), col))
         }
-        print(meas_plot(df, mcols))
+        if (length(mcols)) print(meas_plot(df, mcols))
 
         st <- stats_table(df, mcols)
         if (!is.null(st) && nrow(st)) {

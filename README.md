@@ -1,6 +1,6 @@
 # RStone
 
-**A wizard-style data-entry and analysis app for lithic analysis.** RStone walks you through recording one field at a time — conditional fields auto-skip when they don't apply, values carry forward sensibly, and each attribute appears in a live panel on the right as you confirm it. Your data lives in a plain CSV (with a parallel JSON copy) that you can back up, version, and push to GitHub straight from the app. Beyond data entry, RStone edits records in several ways, visualises them (including PCA and correspondence analysis), and exports everything — figures, tables, and the underlying **R code** — so your analysis is reproducible.
+**A wizard-style data-entry and quality-control app for lithic analysis.** RStone walks you through recording one field at a time — conditional fields auto-skip when they don't apply, values carry forward sensibly, and each attribute appears in a live panel on the right as you confirm it. Your data lives in a plain CSV (with a parallel JSON copy) that you can back up, version, and push to GitHub straight from the app. Beyond data entry, RStone edits records in several ways, gives you quick visual and data-quality checks to catch recording errors early, and exports everything — figures, tables, and the underlying **R code** — so the real analysis you do downstream is reproducible.
 
 The variable set is **fully user-configurable**. RStone reads its schema from a plain-text CFG file that you can edit right inside the app (or in any text editor), and the wizard adapts automatically — no code changes needed. RStone ships with [`schemas/default.cfg`](schemas/default.cfg) as a generic starting point; drop any additional `.cfg` files into `schemas/` and switch between them in Settings.
 
@@ -17,7 +17,7 @@ RStone keeps the one-question-at-a-time, auto-skip philosophy of E5 and builds a
 - **Edit your schema live in the app.** The Schema tab lets you add, edit, reorder, and delete fields through friendly forms — with validation before anything is written — or edit the raw CFG directly. No restart, no external tools.
 - **A live attribute panel.** As you confirm each field, it appears in the **Current Record** panel on the right, so you always see what you've entered so far.
 - **Several ways to edit records.** Fix the last record, duplicate one as the basis for the next, edit any row from the table, or **mass-edit** every record matching a filter at once — all validated and audit-logged.
-- **Visualisation built in.** Auto overview charts, a **Build-Your-Own** plot builder with optional statistical annotations, plus dedicated **PCA** and **Correspondence Analysis** tabs.
+- **Quick checks, not a stats suite.** Auto overview charts and a **Build-Your-Own** plot builder for eyeballing distributions and spotting errors, plus a **Data Quality** panel that flags missing values, rule-breaking entries, duplicate IDs, and numeric outliers so you fix them before analysis. Serious statistics happen downstream in R — see the next point.
 - **Reproducible by design.** Every analysis exports as a runnable **R script**, alongside publication-ready **PNG/JPG at 300 dpi** and **CSV** tables. A **Report Builder** compiles captured plots into a single PDF.
 - **Your data stays safe.** Atomic CSV writes (no half-written files), automatic **rolling `.bak` backups**, a lock file for shared drives, structured logging, and a full **audit log** of every change.
 - **Version control from the app.** Commit and push your CSV, JSON, and audit log to **GitHub** directly from the Export & Git tab — your off-machine backup and full history in one step.
@@ -125,13 +125,16 @@ All columns with horizontal scroll and a frozen first column, multi-select field
 
 ---
 
-## Reports
+## Explore & Check
 
-- **Overview** — auto bar charts for menu fields, violin+box for numerics, a summary table, and a multi-page **PDF report**. Export the stats as CSV or the whole thing as a runnable **R script**.
-- **Build Your Own** — plot-type-aware controls, facets, quick presets (fuzzy-matched across schemas), and an optional **statistical-test** annotation. Per-plot exports: add to the PDF queue, **PNG / JPG at 300 dpi**, **table CSV**, or an **R script**.
-- **PCA** — pick 2+ numeric variables with optional grouping; scores, scree, and loadings. Capture to PDF or export plot/loadings/R-script.
-- **Correspondence Analysis** — pick two categorical variables; biplot and inertia. Capture or export.
-- **Report Builder** — everything you captured lands here; reorder, add section headings, and compile one **PDF** (or a **combined R script**). Captures persist across sessions in `captured_plots.rds`.
+This section is for *checking your data*, not for final analysis — the goal is to catch recording errors while they're still cheap to fix, then hand clean data to R for the real work.
+
+- **Overview** — auto bar charts for the categorical fields you choose and violin+box for numerics, a summary table, and a multi-page **PDF report**. Pick exactly which fields to chart in *Choose what to display* (saved per project). Export the stats as CSV or the whole thing as a runnable **R script**.
+- **Build Your Own** — a quick-look plot builder (bar, box, violin, histogram, scatter…) with facets and cross-schema presets, ideal for spotting outliers and miscodes. An **optional** exploratory test annotation is available but off by default; treat it as a sanity check, not a result. Per-plot exports: add to the PDF queue, **PNG / JPG at 300 dpi**, **table CSV**, or an **R script**.
+- **Data Quality** — scans the whole dataset and reports completeness per field, numeric ranges and outliers (1.5×IQR), and a **"records to review"** table listing every entry that breaks a schema rule (invalid menu value, out-of-range number, bad pattern), is missing a required value, or duplicates an ID. Download the issues as CSV, then fix them in View Records. The checks use the schema's own rules, so they match what the wizard enforces on entry.
+- **Report Builder** — plots you capture from Build Your Own land here; reorder, add section headings, and compile one **PDF** (or a **combined R script**). Captures persist across sessions in `captured_plots.rds`.
+
+> For principal components, correspondence analysis, and other multivariate work, export the R script (or the CSV) and run it in R — RStone gets your data clean and hands off; it doesn't try to be a statistics package.
 
 ---
 
@@ -211,7 +214,7 @@ If RStone helps your research, please cite it — see [`CITATION.cff`](CITATION.
 
 RStone reuses the configuration-file (CFG) format and the conditional data-entry concept originally developed for **E5** by **Shannon P. McPherron** (Max Planck Institute for Evolutionary Anthropology), distributed under the MIT License — see <https://github.com/surf3s/E5>. E5 is itself the descendant of E4 (Shannon McPherron with Harold L. Dibble) and Entrer Trois (with Simon Holdaway).
 
-RStone is an **independent re-implementation in R/Shiny** by **Armando Falcucci**. No source code from E5 is included; the CFG syntax has been extended with section markers, numeric ranges, regex patterns, conditional-required, and external menu lookups. Features built on top include the wizard's live summary panel, dynamic Build-Your-Own reports with statistical annotations, PCA and Correspondence Analysis, the Report Builder, reproducible R-script export, mass-edit, the audit log, atomic writes with rolling backups, and direct git integration.
+RStone is an **independent re-implementation in R/Shiny** by **Armando Falcucci**. No source code from E5 is included; the CFG syntax has been extended with section markers, numeric ranges, regex patterns, conditional-required, and external menu lookups. Features built on top include the wizard's live summary panel, quick-look Build-Your-Own plots, a data-quality panel, reproducible R-script export, the Report Builder, mass-edit, the audit log, atomic writes with rolling backups, and direct git integration.
 
 RStone was built with the help of **Claude Opus 4.8** (Anthropic).
 
