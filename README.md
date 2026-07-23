@@ -1,4 +1,5 @@
 # RStone
+**Development version, testing phase.**
 
 **A wizard-style data-entry and quality-control app for lithic analysis.** RStone walks you through recording one field at a time — conditional fields auto-skip when they don't apply, values carry forward sensibly, and each attribute appears in a live panel on the right as you confirm it. Your data lives in a plain CSV (with a parallel JSON copy) that you can back up, version, and push to GitHub straight from the app. Beyond data entry, RStone edits records in several ways, gives you quick visual and data-quality checks to catch recording errors early, and exports everything — figures, tables, and the underlying **R code** — so the real analysis you do downstream is reproducible.
 
